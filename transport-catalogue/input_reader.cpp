@@ -7,29 +7,6 @@
 
 using namespace std::literals;
 
-namespace transport::commands {
-void InputReader::ParseLine(std::string_view line) {
-    auto command_description = detail::ParseCommandDescription(line);
-    if (command_description) {
-        if (command_description.command == "Stop"s) {
-            commands_.push_front(std::move(command_description));
-        } else {
-            commands_.push_back(std::move(command_description));
-        }
-    }
-}
-
-void InputReader::ApplyCommands(transport::TransportCatalogue& catalogue) const {
-    for (auto& command_description : commands_) {
-        if (command_description.command == "Stop"s) {
-            catalogue.AddBusStop(std::move(command_description.id), detail::ParseCoordinates(command_description.description));
-        } else if (command_description.command == "Bus"s) {
-            catalogue.AddBus(std::move(command_description.id), detail::ParseRoute(command_description.description));
-        }
-    }
-}
-
-namespace detail {
 /**
  * Парсит строку вида "10.123,  -30.1837" и возвращает пару координат (широта, долгота)
  */
@@ -100,6 +77,7 @@ std::vector<std::string_view> ParseRoute(std::string_view route) {
     return results;
 }
 
+namespace transport {
 CommandDescription ParseCommandDescription(std::string_view line) {
     auto colon_pos = line.find(':');
     if (colon_pos == line.npos) {
@@ -121,5 +99,28 @@ CommandDescription ParseCommandDescription(std::string_view line) {
             std::string(line.substr(colon_pos + 1))};
 }
 
+void InputReader::ParseLine(std::string_view line) {
+    auto command_description = ParseCommandDescription(line);
+    if (command_description) {
+        if (command_description.command == "Stop"s) {
+            commands_.push_front(std::move(command_description));
+        } else {
+            commands_.push_back(std::move(command_description));
+        }
+    }
+}
+
+void InputReader::ApplyCommands(transport::TransportCatalogue& catalogue) const {
+    for (auto& command_description : commands_) {
+        if (command_description.command == "Stop"s) {
+            catalogue.AddStop(std::move(command_description.id), ParseCoordinates(command_description.description));
+        } else if (command_description.command == "Bus"s) {
+            auto route = ParseRoute(command_description.description);
+            std::vector<StopPtr> route_stops{route.size(), nullptr};
+            std::transform(route.begin(), route.end(), 
+                           route_stops.begin(), [&](std::string_view stop_id) -> StopPtr { return catalogue.GetStop(stop_id); });            
+            catalogue.AddBus(std::move(command_description.id), std::move(route_stops));
+        }
+    }
 }
 }

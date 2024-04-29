@@ -2,23 +2,12 @@
 #include "stat_reader.h"
 
 #include <iomanip>
+#include <set>
 #include <unordered_set>
 
 using namespace std::literals;
+using namespace transport;
 
-namespace transport::requests {
-void ParseAndPrintStat(const TransportCatalogue& tansport_catalogue, 
-                       std::string_view request,
-                       std::ostream& output) { 
-    auto request_description = detail::ParseRequest(request);
-    if (request_description.request_type == "Bus"s) {
-        detail::ParseAndPrintStatBus(tansport_catalogue, request_description, output);
-    } else if (request_description.request_type == "Stop"s) {
-        detail::ParseAndPrintStatBusStop(tansport_catalogue, request_description, output);
-    }
-}
-
-namespace detail {
 RequestDescription ParseRequest(std::string_view request) {
     auto space_pos = request.find(' ');
     auto request_type = request.substr(0, space_pos);
@@ -54,26 +43,44 @@ void ParseAndPrintStatBus(const TransportCatalogue& tansport_catalogue,
            << std::setprecision(6) << r_length << " route length\n"s;
 }
 
+struct BusCmp {
+    bool operator() (BusPtr lhs, BusPtr rhs) const {
+        return lhs->id < rhs->id;
+    }
+};
+
 void ParseAndPrintStatBusStop(const TransportCatalogue& tansport_catalogue, 
                               const RequestDescription& request_description,
                               std::ostream& output) {
-    auto bus_stop = tansport_catalogue.GetBusStop(request_description.object_id);
-    if (!bus_stop) {
+    auto stop = tansport_catalogue.GetStop(request_description.object_id);
+    if (!stop) {
         output << "Stop "s << request_description.object_id << ": not found\n"s;
         return;
     }
     
-    auto bus_ids = tansport_catalogue.GetBuses(request_description.object_id);
-    if (bus_ids.empty()) {
+    auto buses = tansport_catalogue.GetBuses(request_description.object_id);
+    if (buses.empty()) {
         output << "Stop "s << request_description.object_id << ": no buses\n"s;
         return;
     }
-
+    
+    std::set<BusPtr, BusCmp> sorted_buses{std::make_move_iterator(buses.begin()), std::make_move_iterator(buses.end())};
     output << "Stop "s << request_description.object_id << ": buses"s;
-    for (auto bus_id : bus_ids) {
-        output << ' ' << bus_id;
+    for (auto bus : sorted_buses) {
+        output << ' ' << bus->id;
     }
     output << '\n';
 }
+
+namespace transport {
+void ParseAndPrintStat(const TransportCatalogue& tansport_catalogue, 
+                       std::string_view request,
+                       std::ostream& output) { 
+    auto request_description = ParseRequest(request);
+    if (request_description.request_type == "Bus"s) {
+        ParseAndPrintStatBus(tansport_catalogue, request_description, output);
+    } else if (request_description.request_type == "Stop"s) {
+        ParseAndPrintStatBusStop(tansport_catalogue, request_description, output);
+    }
 }
 }

@@ -2,35 +2,37 @@
 #include "geo.h"
 
 #include <deque>
-#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <unordered_set>
 
 namespace transport {
-struct BusStop {
+struct Stop {
     std::string id;
     geo::Coordinates coordinates;
 };
+using StopPtr = const Stop*;
 
 struct Bus {
     std::string id;
-    std::vector<BusStop*> stops;
+    std::vector<StopPtr> stops;
 };
+using BusPtr = const Bus*;
 
 class TransportCatalogue {
     public:
-        void AddBusStop(std::string id, geo::Coordinates coordinates);
-        void AddBus(std::string id, std::vector<std::string_view> route);
-        BusStop* GetBusStop(std::string_view id) const;
-        Bus* GetBus(std::string_view id) const;
-        std::set<std::string_view> GetBuses(std::string_view bus_stop_id) const;
+        void AddStop(std::string id, geo::Coordinates coordinates);
+        void AddBus(std::string id, std::vector<StopPtr> route_stops);
+        StopPtr GetStop(std::string_view id) const;
+        BusPtr GetBus(std::string_view id) const;
+        std::unordered_set<BusPtr> GetBuses(std::string_view stop_id) const;
 
     private:
-    std::deque<BusStop> bus_stops_;
-    std::unordered_map<std::string_view, BusStop*> bus_stop_links_; 
+    std::deque<Stop> stops_;
+    std::unordered_map<std::string_view, StopPtr> stop_links_; 
     std::deque<Bus> buses_;
-    std::unordered_map<std::string_view, Bus*> bus_links_;
-    std::unordered_map<std::string_view, std::set<std::string_view>> bus_stop_to_buses_;
+    std::unordered_map<std::string_view, BusPtr> bus_links_;
+    std::unordered_map<StopPtr, std::unordered_set<BusPtr>> stop_to_buses_;
 };
 }

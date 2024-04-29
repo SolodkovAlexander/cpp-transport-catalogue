@@ -6,8 +6,6 @@
 
 using namespace std;
 using namespace transport;
-using namespace transport::commands;
-using namespace transport::requests;
 
 int main() {
     TransportCatalogue catalogue;

@@ -7,8 +7,7 @@
 #include <string_view>
 #include <deque>
 
-namespace transport::commands {
-namespace detail {
+namespace transport {
 struct CommandDescription {
     // Определяет, задана ли команда (поле command непустое)
     explicit operator bool() const {
@@ -24,11 +23,6 @@ struct CommandDescription {
     std::string description;  // Параметры команды
 };
 
-CommandDescription ParseCommandDescription(std::string_view line);
-geo::Coordinates ParseCoordinates(std::string_view str);
-std::vector<std::string_view> ParseRoute(std::string_view route);
-}
-
 class InputReader {
 public:
     /**
@@ -42,6 +36,6 @@ public:
     void ApplyCommands(transport::TransportCatalogue& catalogue) const;
 
 private:
-    std::deque<detail::CommandDescription> commands_;
+    std::deque<CommandDescription> commands_;
 };
 }
