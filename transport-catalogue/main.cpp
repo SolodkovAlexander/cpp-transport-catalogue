@@ -1,5 +1,6 @@
 #include "input_reader.h"
 #include "stat_reader.h"
+#include "transport_catalogue.h"
 
 #include <iostream>
 #include <string>
@@ -10,7 +11,7 @@ using namespace transport;
 int main() {
     TransportCatalogue catalogue;
 
-    int base_request_count;
+    int base_request_count{0};
     cin >> base_request_count >> ws;
 
     {
@@ -23,7 +24,7 @@ int main() {
         reader.ApplyCommands(catalogue);
     }
 
-    int stat_request_count;
+    int stat_request_count{0};
     cin >> stat_request_count >> ws;
     for (int i = 0; i < stat_request_count; ++i) {
         string line;

@@ -8,6 +8,10 @@
 using namespace std::literals;
 using namespace transport;
 
+namespace {
+    const int STAT_BUS_CURVATURE_PRECISION = 6;
+}
+
 RequestDescription ParseRequest(std::string_view request) {
     auto space_pos = request.find(' ');
     auto request_type = request.substr(0, space_pos);
@@ -29,18 +33,21 @@ void ParseAndPrintStatBus(const TransportCatalogue& tansport_catalogue,
         return;
     }
 
-    size_t r_stop_count = bus->stops.size();
-    size_t u_stop_count = std::unordered_set(bus->stops.begin(), bus->stops.end()).size();
+    const size_t r_stop_count = bus->stops.size();
+    const size_t u_stop_count = std::unordered_set(bus->stops.begin(), bus->stops.end()).size();
     double r_length = 0.0;
+    int r_length_by_stop_distance = 0;
     for (auto start_stop = bus->stops.cbegin(), end_stop = bus->stops.cbegin() + 1;
          end_stop != bus->stops.cend(); ++start_stop, ++end_stop) {
         r_length += ComputeDistance((*start_stop)->coordinates, (*end_stop)->coordinates);
+        r_length_by_stop_distance += TransportCatalogue::GetStopDistance(*start_stop, *end_stop);
     }
 
     output << "Bus "s << bus->id << ": "s 
            << r_stop_count << " stops on route, "s
            << u_stop_count << " unique stops, "s
-           << std::setprecision(6) << r_length << " route length\n"s;
+           << r_length_by_stop_distance << " route length, "s
+           << std::setprecision(STAT_BUS_CURVATURE_PRECISION) << static_cast<double>(r_length_by_stop_distance) / r_length  << " curvature\n";
 }
 
 struct BusCmp {
@@ -64,7 +71,7 @@ void ParseAndPrintStatBusStop(const TransportCatalogue& tansport_catalogue,
         return;
     }
     
-    std::set<BusPtr, BusCmp> sorted_buses{std::make_move_iterator(buses.begin()), std::make_move_iterator(buses.end())};
+    const std::set<BusPtr, BusCmp> sorted_buses{std::make_move_iterator(buses.begin()), std::make_move_iterator(buses.end())};
     output << "Stop "s << request_description.object_id << ": buses"s;
     for (auto bus : sorted_buses) {
         output << ' ' << bus->id;
@@ -83,4 +90,4 @@ void ParseAndPrintStat(const TransportCatalogue& tansport_catalogue,
         ParseAndPrintStatBusStop(tansport_catalogue, request_description, output);
     }
 }
-}
+} // namespace transport

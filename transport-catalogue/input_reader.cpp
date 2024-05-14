@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cassert>
 #include <iterator>
+#include <regex>
+#include <unordered_map>
 #include <vector>
 
 using namespace std::literals;
@@ -16,16 +18,28 @@ geo::Coordinates ParseCoordinates(std::string_view str) {
     auto not_space = str.find_first_not_of(' ');
     auto comma = str.find(',');
 
-    if (comma == str.npos) {
+    if (comma == std::string_view::npos) {
         return {nan, nan};
     }
 
     auto not_space2 = str.find_first_not_of(' ', comma + 1);
 
-    double lat = std::stod(std::string(str.substr(not_space, comma - not_space)));
-    double lng = std::stod(std::string(str.substr(not_space2)));
+    const double lat = std::stod(std::string(str.substr(not_space, comma - not_space)));
+    const double lng = std::stod(std::string(str.substr(not_space2)));
 
     return {lat, lng};
+}
+
+/**
+ * Парсит строку вида "3900m to Marushkino, 21m to Eliseevka" и возвращает ассоц. массив: название остановки -> дистанция до этой остановки
+ */
+std::unordered_map<std::string, int> ParseDistanceToStops(std::string str) {
+    static const auto distance_to_stop_reg = std::regex(R"((\d+)m\sto\s([^,]+))");
+    std::unordered_map<std::string, int> distance_to_stops;
+    for (std::smatch match; std::regex_search(str, match, distance_to_stop_reg); str = match.suffix()) {
+        distance_to_stops.emplace(match[2], std::stoi(match[1]));
+    }
+    return distance_to_stops;
 }
 
 /**
@@ -33,7 +47,7 @@ geo::Coordinates ParseCoordinates(std::string_view str) {
  */
 std::string_view Trim(std::string_view string) {
     const auto start = string.find_first_not_of(' ');
-    if (start == string.npos) {
+    if (start == std::string_view::npos) {
         return {};
     }
     return string.substr(start, string.find_last_not_of(' ') + 1 - start);
@@ -48,7 +62,7 @@ std::vector<std::string_view> Split(std::string_view string, char delim) {
     size_t pos = 0;
     while ((pos = string.find_first_not_of(' ', pos)) < string.length()) {
         auto delim_pos = string.find(delim, pos);
-        if (delim_pos == string.npos) {
+        if (delim_pos == std::string_view::npos) {
             delim_pos = string.size();
         }
         if (auto substr = Trim(string.substr(pos, delim_pos - pos)); !substr.empty()) {
@@ -66,7 +80,7 @@ std::vector<std::string_view> Split(std::string_view string, char delim) {
  * Для некольцевого маршрута (A-B-C-D) возвращает массив названий остановок [A,B,C,D,C,B,A]
  */
 std::vector<std::string_view> ParseRoute(std::string_view route) {
-    if (route.find('>') != route.npos) {
+    if (route.find('>') != std::string_view::npos) {
         return Split(route, '>');
     }
 
@@ -80,7 +94,7 @@ std::vector<std::string_view> ParseRoute(std::string_view route) {
 namespace transport {
 CommandDescription ParseCommandDescription(std::string_view line) {
     auto colon_pos = line.find(':');
-    if (colon_pos == line.npos) {
+    if (colon_pos == std::string_view::npos) {
         return {};
     }
 
@@ -94,7 +108,15 @@ CommandDescription ParseCommandDescription(std::string_view line) {
         return {};
     }
 
-    return {std::string(line.substr(0, space_pos)),
+    static const std::unordered_map<std::string, CommandType> command_type_to_str = {
+        {"Stop"s, CommandType::kStop},
+        {"Bus"s, CommandType::kBus}
+    };
+    const auto command_type_str = std::string(line.substr(0, space_pos));
+
+    return {(command_type_to_str.count(command_type_str) 
+             ? command_type_to_str.at(command_type_str) 
+             : CommandType::kUnknown),
             std::string(line.substr(not_space, colon_pos - not_space)),
             std::string(line.substr(colon_pos + 1))};
 }
@@ -102,7 +124,7 @@ CommandDescription ParseCommandDescription(std::string_view line) {
 void InputReader::ParseLine(std::string_view line) {
     auto command_description = ParseCommandDescription(line);
     if (command_description) {
-        if (command_description.command == "Stop"s) {
+        if (command_description.command == CommandType::kStop) {
             commands_.push_front(std::move(command_description));
         } else {
             commands_.push_back(std::move(command_description));
@@ -111,16 +133,32 @@ void InputReader::ParseLine(std::string_view line) {
 }
 
 void InputReader::ApplyCommands(transport::TransportCatalogue& catalogue) const {
-    for (auto& command_description : commands_) {
-        if (command_description.command == "Stop"s) {
-            catalogue.AddStop(std::move(command_description.id), ParseCoordinates(command_description.description));
-        } else if (command_description.command == "Bus"s) {
+    //Команды отсортированы [Stop commands ..., Other commands ...]
+    //Создаем остановки, затем определяем расстояния между ними
+    for (const auto& command_description : commands_) {
+        if (command_description.command != CommandType::kStop) {
+            break;
+        }
+        catalogue.AddStop(command_description.id, ParseCoordinates(command_description.description));
+    }
+    for (const auto& command_description : commands_) {
+        if (command_description.command != CommandType::kStop) {
+            break;
+        }
+        for (const auto& [stop_id, distance] : ParseDistanceToStops(command_description.description)) {
+            catalogue.SetStopDistance(command_description.id, stop_id, distance);
+        }
+    }
+
+    for (const auto& command_description : commands_) {
+       if (command_description.command == CommandType::kBus) { 
+            //Создаем маршрут
             auto route = ParseRoute(command_description.description);
             std::vector<StopPtr> route_stops{route.size(), nullptr};
             std::transform(route.begin(), route.end(), 
                            route_stops.begin(), [&](std::string_view stop_id) -> StopPtr { return catalogue.GetStop(stop_id); });            
-            catalogue.AddBus(std::move(command_description.id), std::move(route_stops));
+            catalogue.AddBus(command_description.id, std::move(route_stops));
         }
     }
 }
-}
+} // namespace transport

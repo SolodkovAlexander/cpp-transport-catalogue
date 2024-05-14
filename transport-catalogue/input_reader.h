@@ -8,17 +8,23 @@
 #include <deque>
 
 namespace transport {
+enum class CommandType {
+    kUnknown = 0,
+    kStop,
+    kBus
+};
+
 struct CommandDescription {
-    // Определяет, задана ли команда (поле command непустое)
+    // Определяет, известна ли команда
     explicit operator bool() const {
-        return !command.empty();
+        return !(command == CommandType::kUnknown);
     }
 
     bool operator!() const {
         return !operator bool();
     }
 
-    std::string command;      // Название команды
+    CommandType command;      // Тип команды
     std::string id;           // id маршрута или остановки
     std::string description;  // Параметры команды
 };
@@ -38,4 +44,4 @@ public:
 private:
     std::deque<CommandDescription> commands_;
 };
-}
+} // namespace transport
