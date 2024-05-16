@@ -12,20 +12,16 @@ StopPtr TransportCatalogue::GetStop(std::string_view id) const {
     return stop_links_.count(id) ? stop_links_.at(id) : nullptr;
 }
 
-void TransportCatalogue::SetStopDistance(std::string_view id_from, std::string_view id_to, int distance) {
-    auto stop_from = const_cast<Stop*>(GetStop(id_from));
-    auto stop_to = GetStop(id_to);
-    assert(stop_from && stop_to);
-
-    stop_from->distance_to_stops[stop_to] = distance;
+void TransportCatalogue::SetStopDistance(StopPtr stop_from, StopPtr stop_to, int distance) {    
+    distances_[{stop_from, stop_to}] = distance;
 }
 
-int TransportCatalogue::GetStopDistance(StopPtr stop_from, StopPtr stop_to) {
+int TransportCatalogue::GetStopDistance(StopPtr stop_from, StopPtr stop_to) const {
     assert(stop_from && stop_to);
 
-    return (stop_from->distance_to_stops.count(stop_to)
-            ? stop_from->distance_to_stops.at(stop_to)
-            : stop_to->distance_to_stops.at(stop_from));
+    return (distances_.count({stop_from, stop_to}) 
+            ? distances_.at({stop_from, stop_to})
+            : distances_.at({stop_to, stop_from}));
 }
 
 void TransportCatalogue::AddBus(std::string id, std::vector<StopPtr> route_stops) {

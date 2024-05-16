@@ -146,7 +146,9 @@ void InputReader::ApplyCommands(transport::TransportCatalogue& catalogue) const 
             break;
         }
         for (const auto& [stop_id, distance] : ParseDistanceToStops(command_description.description)) {
-            catalogue.SetStopDistance(command_description.id, stop_id, distance);
+            catalogue.SetStopDistance(catalogue.GetStop(command_description.id),
+                                      catalogue.GetStop(stop_id),
+                                      distance);
         }
     }
 

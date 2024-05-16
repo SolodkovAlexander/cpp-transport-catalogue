@@ -40,7 +40,7 @@ void ParseAndPrintStatBus(const TransportCatalogue& tansport_catalogue,
     for (auto start_stop = bus->stops.cbegin(), end_stop = bus->stops.cbegin() + 1;
          end_stop != bus->stops.cend(); ++start_stop, ++end_stop) {
         r_length += ComputeDistance((*start_stop)->coordinates, (*end_stop)->coordinates);
-        r_length_by_stop_distance += TransportCatalogue::GetStopDistance(*start_stop, *end_stop);
+        r_length_by_stop_distance += tansport_catalogue.GetStopDistance(*start_stop, *end_stop);
     }
 
     output << "Bus "s << bus->id << ": "s 
