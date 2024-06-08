@@ -23,6 +23,7 @@ class TransportCatalogue {
         void AddBus(std::string id, std::vector<StopPtr> route_stops);
         BusPtr GetBus(std::string_view id) const;
         std::unordered_set<BusPtr> GetBuses(std::string_view stop_id) const;
+        std::vector<BusPtr> GetBuses() const;
 
     private:
     std::deque<Stop> stops_;

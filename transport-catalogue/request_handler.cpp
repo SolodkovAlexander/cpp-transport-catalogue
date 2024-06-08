@@ -6,7 +6,7 @@ RequestHandler::RequestHandler(const transport::TransportCatalogue& db,
       renderer_(renderer)
 {}
 
-std::optional<BusStat> RequestHandler::GetBusStat(const std::string_view& bus_name) const {
+std::optional<BusStat> RequestHandler::GetBusStat(std::string_view bus_name) const {
     auto bus(db_.GetBus(bus_name));
     if (!bus) {
         return std::nullopt;
@@ -30,7 +30,7 @@ std::optional<BusStat> RequestHandler::GetBusStat(const std::string_view& bus_na
     };
 }
 
-std::optional<StopStat> RequestHandler::GetStopStat(const std::string_view& stop_name) const {
+std::optional<StopStat> RequestHandler::GetStopStat(std::string_view stop_name) const {
     auto stop = db_.GetStop(stop_name);
     if (!stop) {
         return std::nullopt;
@@ -41,4 +41,8 @@ std::optional<StopStat> RequestHandler::GetStopStat(const std::string_view& stop
         stop_stat.bus_names.insert(bus->id);
     }
     return stop_stat;
+}
+
+svg::Document RequestHandler::RenderMap() const { 
+    return renderer_.RenderBuses(db_.GetBuses());
 }

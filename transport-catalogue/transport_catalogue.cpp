@@ -41,4 +41,14 @@ std::unordered_set<BusPtr> TransportCatalogue::GetBuses(std::string_view stop_id
     auto stop = GetStop(stop_id);
     return stop_to_buses_.count(stop) ? stop_to_buses_.at(stop) : std::unordered_set<BusPtr>{};
 }
-} // namespace transport
+
+std::vector<BusPtr> TransportCatalogue::GetBuses() const { 
+    std::vector<BusPtr> buses;
+    buses.reserve(buses_.size());
+    for (const auto& bus : buses_) {
+        buses.push_back(&bus);
+    }
+    return buses; 
+}
+
+}  // namespace transport

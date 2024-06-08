@@ -32,16 +32,16 @@ public:
     RequestHandler(const transport::TransportCatalogue& db, const renderer::MapRenderer& renderer);
 
     // Возвращает информацию о маршруте (запрос Bus)
-    std::optional<BusStat> GetBusStat(const std::string_view& bus_name) const;
+    std::optional<BusStat> GetBusStat(std::string_view bus_name) const;
 
     // Возвращает информацию о маршруте (запрос Bus)
-    std::optional<StopStat> GetStopStat(const std::string_view& stop_name) const;
+    std::optional<StopStat> GetStopStat(std::string_view stop_name) const;
 
     // Возвращает маршруты, проходящие через
     //const std::unordered_set<transport::BusPtr>* GetBusesByStop(const std::string_view& stop_name) const;
 
-    // Этот метод будет нужен в следующей части итогового проекта
-    //svg::Document RenderMap() const;
+    // Рендерит транспортный каталог
+    svg::Document RenderMap() const;
 
 private:
     // RequestHandler использует агрегацию объектов "Транспортный Справочник" и "Визуализатор Карты"
