@@ -34,9 +34,4 @@ struct Bus {
     std::vector<StopPtr> stops;
 };
 
-using BusPtr = const Bus*;
-struct BusComparator {
-    bool operator() (BusPtr lhs, BusPtr rhs) const;
-};
-
 }  // namespace transport

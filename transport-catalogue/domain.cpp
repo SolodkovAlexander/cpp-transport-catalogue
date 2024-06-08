@@ -8,8 +8,4 @@ size_t StopPairHasher::operator() (const std::pair<StopPtr, StopPtr>& other) con
     return stop_hasher(other.first) + stop_hasher(other.second) * n;
 }
 
-bool BusComparator::operator() (BusPtr lhs, BusPtr rhs) const {
-    return lhs->id < rhs->id;
-}
-
 }  // namespace transport

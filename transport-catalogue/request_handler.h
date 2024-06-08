@@ -4,6 +4,8 @@
 #include "svg.h"
 #include "transport_catalogue.h"
 
+#include <set>
+
 /*
  * Код обработчика запросов к базе, содержащего логику, которую не
  * хотелось бы помещать ни в transport_catalogue, ни в json reader.
@@ -13,30 +15,33 @@
 // с другими подсистемами приложения.
 // См. паттерн проектирования Фасад: https://ru.wikipedia.org/wiki/Фасад_(шаблон_проектирования)
 
+struct BusStat {
+    double curvature = 0.0;
+    int route_length = 0;
+    int stop_count = 0;
+    int unique_stop_count = 0;
+};
+
+struct StopStat {
+    std::set<std::string> bus_names;
+};
+
 class RequestHandler {
 public:
     // MapRenderer понадобится в следующей части итогового проекта
     RequestHandler(const transport::TransportCatalogue& db, const renderer::MapRenderer& renderer);
 
     // Возвращает информацию о маршруте (запрос Bus)
-    //std::optional<transport::BusStat> GetBusStat(const std::string_view& bus_name) const;
+    std::optional<BusStat> GetBusStat(const std::string_view& bus_name) const;
+
+    // Возвращает информацию о маршруте (запрос Bus)
+    std::optional<StopStat> GetStopStat(const std::string_view& stop_name) const;
 
     // Возвращает маршруты, проходящие через
     //const std::unordered_set<transport::BusPtr>* GetBusesByStop(const std::string_view& stop_name) const;
 
     // Этот метод будет нужен в следующей части итогового проекта
     //svg::Document RenderMap() const;
-
-    // Считывает запрос и печаетает ответ на запрос (статистику)
-    void ParseAndPrintStat(std::string_view request,
-                           std::ostream& output);
-
-public:
-    // Описание запроса (для разбора запроса в виде строки)
-    struct RequestDescription {
-        std::string_view request_type;
-        std::string_view object_id;
-    };
 
 private:
     // RequestHandler использует агрегацию объектов "Транспортный Справочник" и "Визуализатор Карты"
