@@ -1,0 +1,128 @@
+#pragma once
+
+#include <iostream>
+#include <map>
+#include <string>
+#include <variant>
+#include <vector>
+
+using namespace std::literals;
+
+namespace json {
+
+class Node;
+// Сохраните объявления Dict и Array без изменения
+using Dict = std::map<std::string, Node>;
+using Array = std::vector<Node>;
+
+// Эта ошибка должна выбрасываться при ошибках парсинга JSON
+class ParsingError : public std::runtime_error {
+public:
+    using runtime_error::runtime_error;
+};
+
+class Node {
+public:
+   /* Реализуйте Node, используя std::variant */
+    explicit Node() = default;
+
+    template<typename ValueType>
+    Node(ValueType value)
+        : data_(std::move(value))
+    {}
+
+    void Print(std::ostream& output) const;
+
+    int AsInt() const;
+    bool AsBool() const;
+    double AsDouble() const;
+    const std::string& AsString() const;
+    const Array& AsArray() const;
+    const Dict& AsMap() const;
+
+    inline bool IsInt() const { return std::holds_alternative<int>(data_); }
+    inline bool IsPureDouble() const { return std::holds_alternative<double>(data_); }
+    inline bool IsDouble() const { return IsInt() || IsPureDouble(); }
+    inline bool IsBool() const { return std::holds_alternative<bool>(data_); }
+    inline bool IsString() const { return std::holds_alternative<std::string>(data_); }
+    inline bool IsNull() const { return std::holds_alternative<std::nullptr_t>(data_); }
+    inline bool IsArray() const { return std::holds_alternative<Array>(data_); }
+    inline bool IsMap() const { return std::holds_alternative<Dict>(data_); }
+
+    friend inline bool operator==(const Node& lhs, const Node& rhs) {
+        return lhs.data_ == rhs.data_;
+    }
+    friend inline bool operator!=(const Node& lhs, const Node& rhs) {
+        return !(lhs == rhs);
+    }
+
+private:
+    struct DataPrinter {
+        std::ostream& out;
+
+        inline void operator()(std::nullptr_t) const { out << "null"sv; }
+        inline void operator()(int value) const { out << value; }
+        inline void operator()(double value) const { out << value; }
+        inline void operator()(std::string value) const {
+            out << "\"";
+            for (auto ch : value) {
+                if (ch == '\n' || ch == '\r' || ch == '"' || ch == '\t' || ch == '\\') {
+                    out << '\\';
+                    switch (ch) {
+                    case '\n': out << 'n'; break;
+                    case '\r': out << 'r'; break;
+                    case '"': out << '"'; break;
+                    case '\t': out << 't'; break;
+                    case '\\': out << '\\'; break;
+                    default: break;
+                    }
+                } else {
+                    out << ch;
+                }
+            }
+            out << "\"";
+        }
+        inline void operator()(bool value) const { out << std::boolalpha << value << std::noboolalpha; }
+        inline void operator()(Array value) const {
+            out << '[';
+            for (auto it = value.cbegin(); it != value.cend(); ++it) {
+                if (it != value.cbegin()) out << ',';
+                (*it).Print(out);
+            }
+            out << ']';
+        }
+        inline void operator()(Dict value) const {
+            out << '{';
+            for (auto it = value.cbegin(); it != value.cend(); ++it) {
+                if (it != value.cbegin()) out << ',';
+                out << '"' << (*it).first << "\":";
+                (*it).second.Print(out);
+            }
+            out << '}';
+        }
+    };
+
+    template <typename ValueType>
+    static void FillNodeData(Node& node, ValueType value) {
+        node.data_ = std::move(value);
+    }
+
+    std::variant<std::nullptr_t, int, double, std::string, bool, Array, Dict> data_ = nullptr;
+};
+
+
+class Document {
+public:
+    explicit Document(Node root);
+
+    const Node& GetRoot() const;
+
+private:
+    Node root_;
+};
+
+Document Load(std::istream& input);
+
+void Print(const Document& doc, std::ostream& output);
+
+}  // namespace json

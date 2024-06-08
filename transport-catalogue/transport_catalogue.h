@@ -1,4 +1,5 @@
 #pragma once
+#include "domain.h"
 #include "geo.h"
 
 #include <deque>
@@ -8,25 +9,8 @@
 #include <unordered_set>
 
 namespace transport {
-struct Stop {
-    std::string id;
-    geo::Coordinates coordinates;
-};
-using StopPtr = const Stop*;
-struct StopPairHasher {
-    size_t operator() (const std::pair<StopPtr, StopPtr>& other) const {
-        return stop_hasher(other.first) + stop_hasher(other.second) * n;
-    }
-    
-    private:
-        inline static std::hash<StopPtr> stop_hasher;
-        inline static const size_t n = 37;
-};
 
-struct Bus {
-    std::string id;
-    std::vector<StopPtr> stops;
-};
+using StopPtr = const Stop*;
 using BusPtr = const Bus*;
 
 class TransportCatalogue {
@@ -48,4 +32,5 @@ class TransportCatalogue {
     std::unordered_map<StopPtr, std::unordered_set<BusPtr>> stop_to_buses_;
     std::unordered_map<std::pair<StopPtr, StopPtr>, int, StopPairHasher> distances_;
 };
-} // namespace transport
+
+}  // namespace transport
