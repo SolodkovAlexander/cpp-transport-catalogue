@@ -1,9 +1,10 @@
 #include "map_renderer.h"
 
 #include <array>
-#include <unordered_map>
+#include <map>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 
 using namespace std::literals;
@@ -35,11 +36,11 @@ svg::Document MapRenderer::RenderMap(std::vector<BusPtr>&& buses,
                                      render_settings_.height,
                                      render_settings_.padding);
 
-    // Сортируем маршруты в лексиграфическом порядке           
+    // Сортируем маршруты в лексиграфическом порядке
     std::sort(buses.begin(), buses.end(), [](BusPtr lhs, BusPtr rhs){ return lhs->id < rhs->id; });
 
     // Кэш для хранения SVG точки остановки
-    std::unordered_map<StopPtr, svg::Point> stop_to_point;
+    std::map<StopPtr, svg::Point, StopCmp> stop_to_point;
 
     // Элементы названий маршрутов для рендеринга 
     std::vector<svg::Text> bus_names_items;
@@ -119,10 +120,50 @@ svg::Document MapRenderer::RenderMap(std::vector<BusPtr>&& buses,
         // Меняем цвет для след. маршрута
         bus_color = std::next(bus_color);
     }
-
-    // Рендерим элементы названий маршрутов
     for (auto& bus_name_item : bus_names_items) {
-        render.Add(bus_name_item);
+        render.Add(std::move(bus_name_item));
+    }
+    
+    // Элементы названий маршрутов для рендеринга 
+    std::vector<svg::Text> stop_names_items;
+    stop_names_items.reserve(stop_to_point.size() * 2);
+
+    // Шаблон элемента названия остановки
+    svg::Text stop_name_template;
+    stop_name_template.SetOffset(render_settings_.stop_label_offset);
+    stop_name_template.SetFontSize(render_settings_.stop_label_font_size);
+    stop_name_template.SetFontFamily("Verdana"s);
+
+    // Рендерим остановки
+    for (const auto& [stop, stop_point] : stop_to_point) {
+        // Рендерим точку остановки
+        svg::Circle stop_circle;
+        stop_circle.SetCenter(stop_point);
+        stop_circle.SetRadius(render_settings_.stop_radius);
+        stop_circle.SetFillColor("white"s);
+        render.Add(stop_circle);
+
+        // Рендерим название остановки
+        // Устанавливаем координаты и название остановки
+        stop_name_template.SetPosition(stop_point);
+        stop_name_template.SetData(stop->id);
+
+        // Рендерим подложку названия остановки
+        svg::Text stop_name_background(stop_name_template);
+        stop_name_background.SetFillColor(render_settings_.underlayer_color);
+        stop_name_background.SetStrokeColor(render_settings_.underlayer_color);
+        stop_name_background.SetStrokeWidth(render_settings_.underlayer_width);
+        stop_name_background.SetStrokeLineCap(svg::StrokeLineCap::ROUND);
+        stop_name_background.SetStrokeLineJoin(svg::StrokeLineJoin::ROUND);
+        stop_names_items.push_back(stop_name_background);
+
+        // Рендерим текст названия остановки
+        svg::Text stop_name_text(stop_name_template);
+        stop_name_text.SetFillColor("black"s);
+        stop_names_items.push_back(stop_name_text);
+    }
+    for (auto& stop_name_item : stop_names_items) {
+        render.Add(std::move(stop_name_item));
     }
 
     return render;

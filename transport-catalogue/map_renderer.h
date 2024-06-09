@@ -86,6 +86,13 @@ private:
     double zoom_coeff_ = 0;
 };
 
+struct StopCmp {
+    using StopPtr = const transport::Stop*;
+    bool operator()(StopPtr lhs, StopPtr rhs) const {
+        return lhs->id < rhs->id;
+    }
+};
+
 class MapRenderer {
 public:
     struct RenderSettings {
@@ -96,7 +103,7 @@ public:
         double stop_radius = 0.0;
         uint32_t bus_label_font_size = 0;
         svg::Point bus_label_offset;
-        int stop_label_font_size = 0;
+        uint32_t stop_label_font_size = 0;
         svg::Point stop_label_offset;
         svg::Color underlayer_color;
         double underlayer_width = 0.0;

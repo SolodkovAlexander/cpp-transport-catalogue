@@ -169,7 +169,7 @@ void FillMapRenderer(MapRenderer& map_renderer, const json::Document & doc) {
             settings_map.at("bus_label_offset").AsArray().at(0).AsDouble(),
             settings_map.at("bus_label_offset").AsArray().at(1).AsDouble()
         },
-        settings_map.at("stop_label_font_size").AsInt(),
+        static_cast<uint32_t>(settings_map.at("stop_label_font_size").AsInt()),
         {
             settings_map.at("stop_label_offset").AsArray().at(0).AsDouble(),
             settings_map.at("stop_label_offset").AsArray().at(1).AsDouble()
