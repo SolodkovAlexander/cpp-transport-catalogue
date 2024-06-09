@@ -5,6 +5,7 @@
 #include "svg.h"
 
 #include <algorithm>
+#include <unordered_set>
 #include <vector>
 
 /*
@@ -93,7 +94,7 @@ public:
         double padding = 0.0;
         double line_width = 0.0;
         double stop_radius = 0.0;
-        int bus_label_font_size = 0;
+        uint32_t bus_label_font_size = 0;
         svg::Point bus_label_offset;
         int stop_label_font_size = 0;
         svg::Point stop_label_offset;
@@ -113,7 +114,8 @@ public:
     // Рендерит транспортный каталог
     using BusPtr = const transport::Bus*;
     using StopPtr = const transport::Stop*;
-    svg::Document RenderBuses(std::vector<BusPtr>&& buses) const;
+    svg::Document RenderMap(std::vector<BusPtr>&& buses, 
+                            std::unordered_set<BusPtr>&& roundtrip_buses) const;
 
 private:
     RenderSettings render_settings_;

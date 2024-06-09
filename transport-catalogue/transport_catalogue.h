@@ -20,15 +20,17 @@ class TransportCatalogue {
         void SetStopDistance(StopPtr stop_from, StopPtr stop_to, int distance);
         int GetStopDistance(StopPtr stop_from, StopPtr stop_to) const;
 
-        void AddBus(std::string id, std::vector<StopPtr> route_stops);
+        void AddBus(std::string id, std::vector<StopPtr> route_stops, bool is_roundtrip);
         BusPtr GetBus(std::string_view id) const;
         std::unordered_set<BusPtr> GetBuses(std::string_view stop_id) const;
         std::vector<BusPtr> GetBuses() const;
+        std::unordered_set<BusPtr> GetRoundtripBuses() const;
 
     private:
     std::deque<Stop> stops_;
     std::unordered_map<std::string_view, StopPtr> stop_links_; 
-    std::deque<Bus> buses_;
+    std::deque<Bus> buses_; 
+    std::unordered_set<BusPtr> roundtrip_buses_;
     std::unordered_map<std::string_view, BusPtr> bus_links_;
     std::unordered_map<StopPtr, std::unordered_set<BusPtr>> stop_to_buses_;
     std::unordered_map<std::pair<StopPtr, StopPtr>, int, StopPairHasher> distances_;

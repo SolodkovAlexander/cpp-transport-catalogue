@@ -56,13 +56,15 @@ void FillTransportCatalogue(TransportCatalogue& db, const json::Document& doc) {
 
         //Получаем маршрут из остановок
         std::vector<StopPtr> route_stops(route.begin(), route.end());
-        if (!request_map.at("is_roundtrip").AsBool()) {
+        bool is_roundtrip(request_map.at("is_roundtrip").AsBool());
+        if (!is_roundtrip) {
             route_stops.insert(route_stops.end(), std::next(route.rbegin()), route.rend());
         }       
 
         //Создаем маршрут  
         db.AddBus(request_map.at("name").AsString(), 
-                  std::move(route_stops));
+                  std::move(route_stops),
+                  is_roundtrip);
     }
 }
 
@@ -162,7 +164,7 @@ void FillMapRenderer(MapRenderer& map_renderer, const json::Document & doc) {
         settings_map.at("padding").AsDouble(),
         settings_map.at("line_width").AsDouble(),
         settings_map.at("stop_radius").AsDouble(),
-        settings_map.at("bus_label_font_size").AsInt(),
+        static_cast<uint32_t>(settings_map.at("bus_label_font_size").AsInt()),
         {
             settings_map.at("bus_label_offset").AsArray().at(0).AsDouble(),
             settings_map.at("bus_label_offset").AsArray().at(1).AsDouble()

@@ -44,5 +44,6 @@ std::optional<StopStat> RequestHandler::GetStopStat(std::string_view stop_name) 
 }
 
 svg::Document RequestHandler::RenderMap() const { 
-    return renderer_.RenderBuses(db_.GetBuses());
+    return renderer_.RenderMap(db_.GetBuses(),
+                               db_.GetRoundtripBuses());
 }

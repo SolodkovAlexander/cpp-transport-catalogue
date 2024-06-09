@@ -24,10 +24,12 @@ int TransportCatalogue::GetStopDistance(StopPtr stop_from, StopPtr stop_to) cons
             : distances_.at({stop_to, stop_from}));
 }
 
-void TransportCatalogue::AddBus(std::string id, std::vector<StopPtr> route_stops) {
+void TransportCatalogue::AddBus(std::string id, std::vector<StopPtr> route_stops, bool is_roundtrip) {
     Bus* bus = &buses_.emplace_back(Bus{std::move(id), std::move(route_stops)});
     bus_links_[bus->id] = bus;
-    
+    if (is_roundtrip) {
+        roundtrip_buses_.insert(bus);
+    }    
     for (auto stop : bus->stops) {
         stop_to_buses_[stop].insert(bus);
     }
@@ -49,6 +51,10 @@ std::vector<BusPtr> TransportCatalogue::GetBuses() const {
         buses.push_back(&bus);
     }
     return buses; 
+}
+
+std::unordered_set<BusPtr> TransportCatalogue::GetRoundtripBuses() const {
+    return roundtrip_buses_;
 }
 
 }  // namespace transport
