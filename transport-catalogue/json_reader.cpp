@@ -1,6 +1,7 @@
 #include "json_reader.h"
 
 #include <algorithm>
+#include <sstream>
 #include <vector>
 
 using namespace std::literals;
@@ -104,6 +105,10 @@ json::Document ExecuteStatRequests(const RequestHandler& request_handler, const 
             } else {
                 request_result["error_message"] = json::Node("not found"s);
             }
+        } else if (request_map.at("type").AsString() == "Map"s) {
+            std::ostringstream out; 
+            request_handler.RenderMap().Render(out);
+            request_result["map"] = json::Node(out.str());
         }
         
         /*

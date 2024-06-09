@@ -37,9 +37,6 @@ public:
     // Возвращает информацию о маршруте (запрос Bus)
     std::optional<StopStat> GetStopStat(std::string_view stop_name) const;
 
-    // Возвращает маршруты, проходящие через
-    //const std::unordered_set<transport::BusPtr>* GetBusesByStop(const std::string_view& stop_name) const;
-
     // Рендерит транспортный каталог
     svg::Document RenderMap() const;
 

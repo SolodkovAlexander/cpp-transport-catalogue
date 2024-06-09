@@ -25,13 +25,11 @@ int main() {
     // Обработчик запросов
     RequestHandler request_handler(db, map_renderer);
 
-    // Рендерим карту
-    request_handler.RenderMap().Render(std::cout);
-
     // Обработка запросов к ТК
-    /*json::Document requests_result(transport::ExecuteStatRequests(request_handler, json_doc));
+    json::Document requests_result(transport::ExecuteStatRequests(request_handler, json_doc));
+    
     //Печатаем результаты запросов к ТК
-    json::Print(requests_result, std::cout);*/
+    json::Print(requests_result, std::cout);
 
     return 0;
 }
