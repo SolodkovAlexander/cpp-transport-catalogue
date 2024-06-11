@@ -218,20 +218,20 @@ Node LoadNode(istream& input) {
 }  // namespace
 
 void Node::Print(std::ostream &output) const {
-    std::visit(DataPrinter{output}, data_);
+    std::visit(DataPrinter{output}, static_cast<NodeParentClass>(*this));
 }
 
 int Node::AsInt() const {
     if (!IsInt()) {
         throw std::logic_error("other type of data"s);
     }
-    return *std::get_if<int>(&data_);
+    return *std::get_if<int>(this);
 }
 bool Node::AsBool() const {
     if (!IsBool()) {
         throw std::logic_error("other type of data");
     }
-    return *std::get_if<bool>(&data_);
+    return *std::get_if<bool>(this);
 }
 double Node::AsDouble() const {
     if (!IsDouble()) {
@@ -239,29 +239,29 @@ double Node::AsDouble() const {
     }
     if (!IsPureDouble()) {
         if (IsInt()) {
-            return static_cast<double>(*std::get_if<int>(&data_));
+            return static_cast<double>(*std::get_if<int>(this));
         }
         throw std::logic_error("other type of double data");
     }
-    return *std::get_if<double>(&data_);
+    return *std::get_if<double>(this);
 }
 const std::string& Node::AsString() const {
     if (!IsString()) {
         throw std::logic_error("other type of data");
     }
-    return *std::get_if<std::string>(&data_);
+    return *std::get_if<std::string>(this);
 }
 const Array& Node::AsArray() const {
     if (!IsArray()) {
         throw std::logic_error("other type of data");
     }
-    return *std::get_if<Array>(&data_);
+    return *std::get_if<Array>(this);
 }
 const Dict& Node::AsMap() const {
     if (!IsMap()) {
         throw std::logic_error("other type of data");
     }
-    return *std::get_if<Dict>(&data_);
+    return *std::get_if<Dict>(this);
 }
 
 Document::Document(Node root)

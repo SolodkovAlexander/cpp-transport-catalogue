@@ -21,14 +21,15 @@ public:
     using runtime_error::runtime_error;
 };
 
-class Node {
+using NodeParentClass = std::variant<std::nullptr_t, int, double, std::string, bool, Array, Dict>;
+class Node : private NodeParentClass {
 public:
    /* Реализуйте Node, используя std::variant */
     explicit Node() = default;
 
     template<typename ValueType>
     Node(ValueType value)
-        : data_(std::move(value))
+        : NodeParentClass(std::move(value))
     {}
 
     void Print(std::ostream& output) const;
@@ -40,21 +41,14 @@ public:
     const Array& AsArray() const;
     const Dict& AsMap() const;
 
-    inline bool IsInt() const { return std::holds_alternative<int>(data_); }
-    inline bool IsPureDouble() const { return std::holds_alternative<double>(data_); }
+    inline bool IsInt() const { return std::holds_alternative<int>(*this); }
+    inline bool IsPureDouble() const { return std::holds_alternative<double>(*this); }
     inline bool IsDouble() const { return IsInt() || IsPureDouble(); }
-    inline bool IsBool() const { return std::holds_alternative<bool>(data_); }
-    inline bool IsString() const { return std::holds_alternative<std::string>(data_); }
-    inline bool IsNull() const { return std::holds_alternative<std::nullptr_t>(data_); }
-    inline bool IsArray() const { return std::holds_alternative<Array>(data_); }
-    inline bool IsMap() const { return std::holds_alternative<Dict>(data_); }
-
-    friend inline bool operator==(const Node& lhs, const Node& rhs) {
-        return lhs.data_ == rhs.data_;
-    }
-    friend inline bool operator!=(const Node& lhs, const Node& rhs) {
-        return !(lhs == rhs);
-    }
+    inline bool IsBool() const { return std::holds_alternative<bool>(*this); }
+    inline bool IsString() const { return std::holds_alternative<std::string>(*this); }
+    inline bool IsNull() const { return std::holds_alternative<std::nullptr_t>(*this); }
+    inline bool IsArray() const { return std::holds_alternative<Array>(*this); }
+    inline bool IsMap() const { return std::holds_alternative<Dict>(*this); }
 
 private:
     struct DataPrinter {
@@ -104,10 +98,8 @@ private:
 
     template <typename ValueType>
     static void FillNodeData(Node& node, ValueType value) {
-        node.data_ = std::move(value);
+        node = std::move(value);
     }
-
-    std::variant<std::nullptr_t, int, double, std::string, bool, Array, Dict> data_ = nullptr;
 };
 
 
