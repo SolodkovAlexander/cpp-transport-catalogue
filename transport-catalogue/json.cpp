@@ -24,7 +24,7 @@ Node LoadArray(istream& input) {
         throw json::ParsingError("load array failed: invalid JSON");
     }
 
-    return Node{move(result)};
+    return Node{std::move(result)};
 }
 
 Node LoadNumber(istream& input) {
@@ -257,8 +257,8 @@ const Array& Node::AsArray() const {
     }
     return *std::get_if<Array>(this);
 }
-const Dict& Node::AsMap() const {
-    if (!IsMap()) {
+const Dict& Node::AsDict() const {
+    if (!IsDict()) {
         throw std::logic_error("other type of data");
     }
     return *std::get_if<Dict>(this);

@@ -1,3 +1,4 @@
+#include "json_builder.h"
 #include "json_reader.h"
 
 #include <algorithm>
@@ -9,11 +10,11 @@ using namespace std::literals;
 namespace transport {
 
 void FillTransportCatalogue(TransportCatalogue& db, const json::Document& doc) {
-    auto base_requests(doc.GetRoot().AsMap().at("base_requests").AsArray());
+    auto base_requests(doc.GetRoot().AsDict().at("base_requests").AsArray());
 
     //Создаем остановки 
     for (const auto& request : base_requests) {
-        auto request_map(request.AsMap());
+        auto request_map(request.AsDict());
         if (request_map.at("type").AsString() != "Stop"s) {
             continue;
         }
@@ -26,12 +27,12 @@ void FillTransportCatalogue(TransportCatalogue& db, const json::Document& doc) {
 
     //Определяем расстояния между остановками
     for (const auto& base_request : base_requests) {
-        auto request_map(base_request.AsMap());
+        auto request_map(base_request.AsDict());
         if (request_map.at("type").AsString() != "Stop"s) {
             continue;
         }
         
-        auto road_distances(request_map.at("road_distances").AsMap());
+        auto road_distances(request_map.at("road_distances").AsDict());
         for (const auto& [stop_id, distance] : road_distances) {
             db.SetStopDistance(db.GetStop(request_map.at("name").AsString()),
                                db.GetStop(stop_id),
@@ -41,7 +42,7 @@ void FillTransportCatalogue(TransportCatalogue& db, const json::Document& doc) {
 
     //Создаем маршруты
     for (const auto& base_request : base_requests) {
-        auto request_map(base_request.AsMap());
+        auto request_map(base_request.AsDict());
         if (request_map.at("type").AsString() != "Bus"s) {
             continue;
         }
@@ -70,56 +71,57 @@ void FillTransportCatalogue(TransportCatalogue& db, const json::Document& doc) {
 }
 
 json::Document ExecuteStatRequests(const RequestHandler& request_handler, const json::Document& doc) {
-    auto stat_requests(doc.GetRoot().AsMap().at("stat_requests").AsArray());
+    auto stat_requests(doc.GetRoot().AsDict().at("stat_requests").AsArray());
 
     // Обрабатываем запросы
-    json::Array request_results;
-    request_results.reserve(stat_requests.size());
+    json::Builder request_results;
+    request_results.StartArray();
     for (const auto& request : stat_requests) {
-        auto request_map(request.AsMap());
+        auto request_map(request.AsDict());
 
         // Результат запроса
-        json::Dict request_result;
-        request_result["request_id"] = json::Node(request_map.at("id").AsInt());
+        json::Builder request_result;
+        request_result.StartDict()
+                      .Key("request_id").Value(request_map.at("id").AsInt());
 
         // Обрабатываем запрос взависимости от типа запроса
         if (request_map.at("type").AsString() == "Bus"s) {
             auto bus_stat(request_handler.GetBusStat(request_map.at("name").AsString()));
             if (bus_stat) {
-                request_result["curvature"] = json::Node((*bus_stat).curvature);
-                request_result["route_length"] = json::Node((*bus_stat).route_length);
-                request_result["stop_count"] = json::Node((*bus_stat).stop_count);
-                request_result["unique_stop_count"] = json::Node((*bus_stat).unique_stop_count);
+                request_result.Key("curvature").Value((*bus_stat).curvature)
+                              .Key("route_length").Value((*bus_stat).route_length)
+                              .Key("stop_count").Value((*bus_stat).stop_count)
+                              .Key("unique_stop_count").Value((*bus_stat).unique_stop_count);
             } else {
-                request_result["error_message"] = json::Node("not found"s);
+                request_result.Key("error_message").Value("not found"s);
             }
         } else if (request_map.at("type").AsString() == "Stop"s) {
             auto stop_stat(request_handler.GetStopStat(request_map.at("name").AsString()));
             if (stop_stat) {
-                json::Array bus_names;
-                bus_names.reserve((*stop_stat).bus_names.size());
+                json::Builder bus_names;
+                bus_names.StartArray();
                 for (auto& bus_name : (*stop_stat).bus_names) {
-                    bus_names.push_back(json::Node(bus_name));
+                    bus_names.Value(bus_name);
                 }
-                request_result["buses"] = json::Node(std::move(bus_names));
+                request_result.Key("buses").Value(bus_names.EndArray()
+                                                           .Build().GetValue());
             } else {
-                request_result["error_message"] = json::Node("not found"s);
+                request_result.Key("error_message").Value("not found"s);
             }
         } else if (request_map.at("type").AsString() == "Map"s) {
             std::ostringstream out; 
             request_handler.RenderMap().Render(out);
-            request_result["map"] = json::Node(out.str());
+            request_result.Key("map").Value(out.str());
         }
-        
-        /*
-            WHANT_TO_KNOW: Почему нельзя написать так:
-            request_results.push_back(json::Node(std::move(request_result)));
-        */
-        json::Node request_result_node(std::move(request_result));
-        request_results.push_back(request_result_node);
+
+        request_results.Value(std::move(request_result
+                                        .EndDict()
+                                        .Build().GetValue()));
     }
 
-    return json::Document(json::Node(request_results));
+    return json::Document(request_results
+                          .EndArray()
+                          .Build());
 }
 
 }  // namespace transport
@@ -162,7 +164,7 @@ namespace utils {
 }  // namespace renderer::utils
 
 void FillMapRenderer(MapRenderer& map_renderer, const json::Document & doc) {
-    auto settings_map(doc.GetRoot().AsMap().at("render_settings").AsMap());
+    auto settings_map(doc.GetRoot().AsDict().at("render_settings").AsDict());
     MapRenderer::RenderSettings settings{
         settings_map.at("width").AsDouble(),
         settings_map.at("height").AsDouble(),

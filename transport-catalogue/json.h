@@ -24,13 +24,10 @@ public:
 using NodeParentClass = std::variant<std::nullptr_t, int, double, std::string, bool, Array, Dict>;
 class Node : private NodeParentClass {
 public:
-   /* Реализуйте Node, используя std::variant */
-    explicit Node() = default;
+    using variant::variant;
+    using Value = variant;
 
-    template<typename ValueType>
-    Node(ValueType value)
-        : NodeParentClass(std::move(value))
-    {}
+    Node(Value value) : variant(std::move(value)) {}
 
     void Print(std::ostream& output) const;
 
@@ -39,7 +36,7 @@ public:
     double AsDouble() const;
     const std::string& AsString() const;
     const Array& AsArray() const;
-    const Dict& AsMap() const;
+    const Dict& AsDict() const;
 
     inline bool IsInt() const { return std::holds_alternative<int>(*this); }
     inline bool IsPureDouble() const { return std::holds_alternative<double>(*this); }
@@ -48,7 +45,11 @@ public:
     inline bool IsString() const { return std::holds_alternative<std::string>(*this); }
     inline bool IsNull() const { return std::holds_alternative<std::nullptr_t>(*this); }
     inline bool IsArray() const { return std::holds_alternative<Array>(*this); }
-    inline bool IsMap() const { return std::holds_alternative<Dict>(*this); }
+    inline bool IsDict() const { return std::holds_alternative<Dict>(*this); }
+    
+    bool operator==(const Node& rhs) const { return GetValue() == rhs.GetValue(); }
+    const Value& GetValue() const { return *this; }
+    Value& GetValue() { return *this; }
 
 private:
     struct DataPrinter {
@@ -101,6 +102,10 @@ private:
         node = std::move(value);
     }
 };
+
+inline bool operator!=(const Node& lhs, const Node& rhs) {
+    return !(lhs == rhs);
+}
 
 
 class Document {
