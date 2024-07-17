@@ -16,6 +16,14 @@ void TransportCatalogue::SetStopDistance(StopPtr stop_from, StopPtr stop_to, int
     distances_[{stop_from, stop_to}] = distance;
 }
 
+void TransportCatalogue::SetRoutingSettings(RoutingSettings routing_settings) {
+    routing_settings_ = routing_settings;
+}
+
+const RoutingSettings& TransportCatalogue::GetRoutingSettings() const {
+    return routing_settings_;
+}
+
 int TransportCatalogue::GetStopDistance(StopPtr stop_from, StopPtr stop_to) const {
     assert(stop_from && stop_to);
 
@@ -55,6 +63,19 @@ std::vector<BusPtr> TransportCatalogue::GetBuses() const {
 
 std::unordered_set<BusPtr> TransportCatalogue::GetRoundtripBuses() const {
     return roundtrip_buses_;
+}
+
+std::vector<StopPtr> TransportCatalogue::GetStops() const {
+    std::vector<StopPtr> stops;
+    stops.reserve(stops_.size());
+    for (const auto& stop : stops_) {
+        stops.push_back(&stop);
+    }
+    return stops;
+}
+
+const std::unordered_map<std::pair<StopPtr, StopPtr>, int, StopPairHasher>& TransportCatalogue::GetDistances() const {
+    return distances_;
 }
 
 }  // namespace transport

@@ -34,4 +34,9 @@ struct Bus {
     std::vector<StopPtr> stops;
 };
 
+struct RoutingSettings {
+    int bus_wait_time = 0;
+    double bus_velocity = 0.0;
+};
+
 }  // namespace transport

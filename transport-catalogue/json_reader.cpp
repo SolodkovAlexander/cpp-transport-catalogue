@@ -1,3 +1,4 @@
+#include "graph.h"
 #include "json_builder.h"
 #include "json_reader.h"
 
@@ -68,6 +69,12 @@ void FillTransportCatalogue(TransportCatalogue& db, const json::Document& doc) {
                   std::move(route_stops),
                   is_roundtrip);
     }
+
+    // Устанавливаем общие настройки маршрутов
+    static constexpr double km_to_m_modifier = 1000.0 / 60.0;
+    auto routing_settings(doc.GetRoot().AsDict().at("routing_settings").AsDict());
+    db.SetRoutingSettings(RoutingSettings{routing_settings.at("bus_wait_time").AsInt(),
+                                          routing_settings.at("bus_velocity").AsDouble() * km_to_m_modifier});
 }
 
 json::Document ExecuteStatRequests(const RequestHandler& request_handler, const json::Document& doc) {
@@ -112,6 +119,40 @@ json::Document ExecuteStatRequests(const RequestHandler& request_handler, const 
             std::ostringstream out; 
             request_handler.RenderMap().Render(out);
             request_result.Key("map").Value(out.str());
+        } else if (request_map.at("type").AsString() == "Route"s) {
+            auto route_stat = request_handler.GetRouteStat(request_map.at("from").AsString(), 
+                                                           request_map.at("to").AsString());
+            if (route_stat) {
+                json::Builder items;
+                items.StartArray();
+                for (const auto& item : (*route_stat).items) {
+                    json::Builder item_as_dict;
+                    item_as_dict.StartDict();
+                    if (holds_alternative<RouteStat::WaitingOnStopItem>(item)) {
+                        item_as_dict
+                            .Key("stop_name").Value(std::string(get<RouteStat::WaitingOnStopItem>(item).name))
+                            .Key("time").Value((*route_stat).bus_wait_time)
+                            .Key("type").Value("Wait"s);
+                    } else {
+                        const auto& bus_item = get<RouteStat::BusItem>(item);
+                        item_as_dict
+                            .Key("bus").Value(std::string(bus_item.name))
+                            .Key("span_count").Value(bus_item.span_count)
+                            .Key("time").Value(bus_item.time)
+                            .Key("type").Value("Bus"s);
+                    }
+                    items.Value(item_as_dict
+                                .EndDict()
+                                .Build().GetValue());
+                }
+                request_result
+                    .Key("total_time").Value((*route_stat).total_time)
+                    .Key("items").Value(items
+                                        .EndArray()
+                                        .Build().GetValue());
+            } else {
+                request_result.Key("error_message").Value("not found"s);
+            }
         }
 
         request_results.Value(std::move(request_result

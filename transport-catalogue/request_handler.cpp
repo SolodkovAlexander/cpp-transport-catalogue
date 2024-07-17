@@ -1,9 +1,12 @@
 #include "request_handler.h"
 
+using namespace std::literals;
+
 RequestHandler::RequestHandler(const transport::TransportCatalogue& db, 
                                const renderer::MapRenderer& renderer)
     : db_(db),
-      renderer_(renderer)
+      renderer_(renderer),
+      route_request_helper_(RequestHandler::RouteRequestHelper<double>(db))
 {}
 
 std::optional<BusStat> RequestHandler::GetBusStat(std::string_view bus_name) const {
@@ -41,6 +44,10 @@ std::optional<StopStat> RequestHandler::GetStopStat(std::string_view stop_name) 
         stop_stat.bus_names.insert(bus->id);
     }
     return stop_stat;
+}
+
+std::optional<RouteStat> RequestHandler::GetRouteStat(std::string_view stop_name_from, std::string_view stop_name_to) const {
+    return route_request_helper_.GetMinTimeRoute(stop_name_from, stop_name_to);
 }
 
 svg::Document RequestHandler::RenderMap() const { 
