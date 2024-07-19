@@ -6,7 +6,7 @@ RequestHandler::RequestHandler(const transport::TransportCatalogue& db,
                                const renderer::MapRenderer& renderer)
     : db_(db),
       renderer_(renderer),
-      route_request_helper_(RequestHandler::RouteRequestHelper<double>(db))
+      db_router_(TransportRouter(db))
 {}
 
 std::optional<BusStat> RequestHandler::GetBusStat(std::string_view bus_name) const {
@@ -47,7 +47,34 @@ std::optional<StopStat> RequestHandler::GetStopStat(std::string_view stop_name) 
 }
 
 std::optional<RouteStat> RequestHandler::GetRouteStat(std::string_view stop_name_from, std::string_view stop_name_to) const {
-    return route_request_helper_.GetMinTimeRoute(stop_name_from, stop_name_to);
+    auto route = db_router_.GetMinTimeRoute(db_.GetStop(stop_name_from), 
+                                            db_.GetStop(stop_name_to));
+    if (!route) {
+        return std::nullopt;
+    }
+
+    RouteStat route_stat{ 
+        db_.GetRoutingSettings().bus_wait_time,
+        (*route).weight,
+        {}
+    };
+    route_stat.items.reserve((*route).edges.size());
+
+    const auto& stops = db_.GetStops();
+    for (auto route_part_it = (*route).edges.begin(); route_part_it != (*route).edges.end(); ++route_part_it) {
+        auto route_part_id = *route_part_it;
+        if (route_part_id < stops.size()) {// Ожидаем автобуса
+            route_stat.items.push_back(RouteStat::WaitingOnStopItem{stops.at(route_part_id)->id});
+        } else {
+            auto [bus, span_count, route_part_time] = db_router_.getBusRouteInfo(route_part_id);
+            route_stat.items.push_back(RouteStat::BusItem{
+                bus->id,
+                span_count,
+                route_part_time
+            });
+        }
+    }
+    return route_stat;
 }
 
 svg::Document RequestHandler::RenderMap() const { 
