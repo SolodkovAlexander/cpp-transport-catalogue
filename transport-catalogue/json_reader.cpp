@@ -120,26 +120,27 @@ json::Document ExecuteStatRequests(const RequestHandler& request_handler, const 
             request_handler.RenderMap().Render(out);
             request_result.Key("map").Value(out.str());
         } else if (request_map.at("type").AsString() == "Route"s) {
-            auto route_stat = request_handler.GetRouteStat(request_map.at("from").AsString(), 
-                                                           request_map.at("to").AsString());
+            auto route_stat = request_handler.FindRoute(request_map.at("from").AsString(), 
+                                                        request_map.at("to").AsString());
             if (route_stat) {
                 json::Builder items;
                 items.StartArray();
                 for (const auto& item : (*route_stat).items) {
                     json::Builder item_as_dict;
                     item_as_dict.StartDict();
-                    if (holds_alternative<RouteStat::WaitingOnStopItem>(item)) {
+                    if (holds_alternative<RouteInfo::WaitingOnStopItem>(item)) {
+                        const auto& waiting_on_stop_item = get<RouteInfo::WaitingOnStopItem>(item);
                         item_as_dict
-                            .Key("stop_name").Value(std::string(get<RouteStat::WaitingOnStopItem>(item).name))
-                            .Key("time").Value((*route_stat).bus_wait_time)
-                            .Key("type").Value("Wait"s);
+                            .Key("type").Value("Wait"s)
+                            .Key("stop_name").Value(std::string(waiting_on_stop_item.stop->id))
+                            .Key("time").Value(waiting_on_stop_item.time);
                     } else {
-                        const auto& bus_item = get<RouteStat::BusItem>(item);
+                        const auto& bus_item = get<RouteInfo::BusItem>(item);
                         item_as_dict
-                            .Key("bus").Value(std::string(bus_item.name))
-                            .Key("span_count").Value(bus_item.span_count)
+                            .Key("type").Value("Bus"s)
+                            .Key("bus").Value(std::string(bus_item.bus->id))
                             .Key("time").Value(bus_item.time)
-                            .Key("type").Value("Bus"s);
+                            .Key("span_count").Value(static_cast<int>(bus_item.span_count));
                     }
                     items.Value(item_as_dict
                                 .EndDict()

@@ -46,35 +46,9 @@ std::optional<StopStat> RequestHandler::GetStopStat(std::string_view stop_name) 
     return stop_stat;
 }
 
-std::optional<RouteStat> RequestHandler::GetRouteStat(std::string_view stop_name_from, std::string_view stop_name_to) const {
-    auto route = db_router_.GetMinTimeRoute(db_.GetStop(stop_name_from), 
-                                            db_.GetStop(stop_name_to));
-    if (!route) {
-        return std::nullopt;
-    }
-
-    RouteStat route_stat{ 
-        db_.GetRoutingSettings().bus_wait_time,
-        (*route).weight,
-        {}
-    };
-    route_stat.items.reserve((*route).edges.size());
-
-    const auto& stops = db_.GetStops();
-    for (auto route_part_it = (*route).edges.begin(); route_part_it != (*route).edges.end(); ++route_part_it) {
-        auto route_part_id = *route_part_it;
-        if (route_part_id < stops.size()) {// Ожидаем автобуса
-            route_stat.items.push_back(RouteStat::WaitingOnStopItem{stops.at(route_part_id)->id});
-        } else {
-            auto [bus, span_count, route_part_time] = db_router_.getBusRouteInfo(route_part_id);
-            route_stat.items.push_back(RouteStat::BusItem{
-                bus->id,
-                span_count,
-                route_part_time
-            });
-        }
-    }
-    return route_stat;
+std::optional<RouteInfo> RequestHandler::FindRoute(std::string_view stop_name_from, std::string_view stop_name_to) const {
+    return db_router_.FindRoute(db_.GetStop(stop_name_from), 
+                                db_.GetStop(stop_name_to));
 }
 
 svg::Document RequestHandler::RenderMap() const { 

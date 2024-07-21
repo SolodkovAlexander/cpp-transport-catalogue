@@ -11,6 +11,23 @@
 using RouteTime = double;
 using StopPtrIt = std::vector<transport::StopPtr>::const_iterator;
 
+struct RouteInfo {
+    struct WaitingOnStopItem {
+        transport::StopPtr stop;
+        RouteTime time = 0.0;
+    };
+    struct BusItem {
+        transport::BusPtr bus;
+        RouteTime time = 0.0;
+        size_t span_count = 0;
+    };
+
+    RouteTime total_time = 0.0;
+
+    using RouteStatItem = std::variant<RouteInfo::WaitingOnStopItem, RouteInfo::BusItem>;
+    std::vector<RouteStatItem> items;
+};
+
 class TransportRouter {
 public:
     TransportRouter(const transport::TransportCatalogue& db);
@@ -18,13 +35,11 @@ public:
 public:
     struct BusRouteInfo {
         transport::BusPtr bus = nullptr;
-        int span_count = 0;
-        RouteTime route_time = 0.0;
+        RouteTime time = 0.0;
+        size_t span_count = 0;
     };
 
-    std::optional<graph::Router<RouteTime>::RouteInfo> GetMinTimeRoute(transport::StopPtr stop_from, transport::StopPtr stop_to) const;
-    
-    BusRouteInfo getBusRouteInfo(graph::VertexId bus_route_id) const;
+    std::optional<RouteInfo> FindRoute(transport::StopPtr stop_from, transport::StopPtr stop_to) const;
 
 private:
     struct StopGraphVertexInfo {
@@ -33,23 +48,23 @@ private:
     };
     struct GraphEdgeBusInfo {
         transport::BusPtr bus;
-        int span_count;
+        size_t span_count;
     };
 
 private:
-    void InitGraph(const transport::TransportCatalogue& db);
+    void InitGraph();
 
     void InitGraphVerteces(const std::vector<transport::StopPtr>& stops, RouteTime bus_wait_time);
 
-    void InitGraphEdges(const transport::TransportCatalogue& db, 
-                        RouteTime bus_velocity);
+    void InitGraphEdges(RouteTime bus_velocity);
 
     void AddBusEdgesByStop(StopPtrIt internal_from, StopPtrIt to_start, StopPtrIt to_end,
                            transport::BusPtr bus,
-                           RouteTime bus_velocity,
-                           const transport::TransportCatalogue& db);
+                           RouteTime bus_velocity);
 
 private:
+    // TransportRouter использует агрегацию объектов "Транспортный Справочник" и "Граф" и "Роутер"
+    const transport::TransportCatalogue& db_;
     std::unique_ptr<graph::DirectedWeightedGraph<RouteTime>> graph_;
     std::unique_ptr<graph::Router<RouteTime>> router_;
     std::unordered_map<transport::StopPtr, StopGraphVertexInfo> stop_to_vertex_info_;

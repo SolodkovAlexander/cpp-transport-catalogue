@@ -1,35 +1,54 @@
 #include "transport_router.h"
 
-TransportRouter::TransportRouter(const transport::TransportCatalogue& db) 
+TransportRouter::TransportRouter(const transport::TransportCatalogue& db) :
+    db_(db)
 {
-    InitGraph(db);
+    InitGraph();
     router_ = std::make_unique<graph::Router<RouteTime>>(*graph_);
 }
 
-std::optional<graph::Router<RouteTime>::RouteInfo> TransportRouter::GetMinTimeRoute(transport::StopPtr stop_from, 
-                                                                   transport::StopPtr stop_to) const {
-    return router_->BuildRoute(stop_to_vertex_info_.at(stop_from).waiting_bus_vertex_id, 
-                               stop_to_vertex_info_.at(stop_to).waiting_bus_vertex_id);
+std::optional<RouteInfo> TransportRouter::FindRoute(transport::StopPtr stop_from, 
+                                                    transport::StopPtr stop_to) const {
+    auto route = router_->BuildRoute(stop_to_vertex_info_.at(stop_from).waiting_bus_vertex_id, 
+                                     stop_to_vertex_info_.at(stop_to).waiting_bus_vertex_id);
+    if (!route) {
+        return std::nullopt;
+    }
+
+    RouteInfo route_info{ (*route).weight, {} };
+    route_info.items.reserve((*route).edges.size());
+
+    const auto& routing_settings = db_.GetRoutingSettings();
+    const auto& stops = db_.GetStops();
+    for (auto route_part_it = (*route).edges.begin(); route_part_it != (*route).edges.end(); ++route_part_it) {
+        auto route_part_id = *route_part_it;
+        if (route_part_id < stops.size()) {
+            route_info.items.push_back(RouteInfo::WaitingOnStopItem{
+                stops.at(route_part_id),
+                static_cast<RouteTime>(routing_settings.bus_wait_time)
+            });
+        } else {
+            auto [bus, span_count] = edge_to_bus_info_.at(route_part_id);
+            route_info.items.push_back(RouteInfo::BusItem{
+                bus,
+                static_cast<RouteTime>(graph_->GetEdge(route_part_id).weight),
+                span_count
+            });
+        }
+    }
+    return route_info;
+
 }
 
-TransportRouter::BusRouteInfo TransportRouter::getBusRouteInfo(graph::VertexId bus_route_id) const {
-    auto [bus, span_count] = edge_to_bus_info_.at(bus_route_id);
-    return BusRouteInfo{
-        bus,
-        span_count,
-        static_cast<RouteTime>(graph_->GetEdge(bus_route_id).weight)
-    };
-}
-
-void TransportRouter::InitGraph(const transport::TransportCatalogue& db) {
-    const auto& stops = db.GetStops();
+void TransportRouter::InitGraph() {
+    const auto& stops = db_.GetStops();
 
     // Количество вершин = остановки и точки ожидания автобуса на остановках
     graph_ = std::make_unique<graph::DirectedWeightedGraph<RouteTime>>(stops.size() * 2);
     
-    const auto& routing_settings = db.GetRoutingSettings();
-    InitGraphVerteces(db.GetStops(), static_cast<RouteTime>(routing_settings.bus_wait_time));
-    InitGraphEdges(db, static_cast<RouteTime>(routing_settings.bus_velocity));
+    const auto& routing_settings = db_.GetRoutingSettings();
+    InitGraphVerteces(db_.GetStops(), static_cast<RouteTime>(routing_settings.bus_wait_time));
+    InitGraphEdges(static_cast<RouteTime>(routing_settings.bus_velocity));
 }
 
 void TransportRouter::InitGraphVerteces(const std::vector<transport::StopPtr>& stops, RouteTime bus_wait_time) {
@@ -41,47 +60,42 @@ void TransportRouter::InitGraphVerteces(const std::vector<transport::StopPtr>& s
     }
 }
 
-void TransportRouter::InitGraphEdges(const transport::TransportCatalogue& db, 
-                                     RouteTime bus_velocity) {
-    const auto& buses = db.GetBuses();
-    const auto& roundtrip_buses = db.GetRoundtripBuses();
+void TransportRouter::InitGraphEdges(RouteTime bus_velocity) {
+    const auto& buses = db_.GetBuses();
+    const auto& roundtrip_buses = db_.GetRoundtripBuses();
     for (auto bus : buses) {
         if (roundtrip_buses.count(bus)) {
             AddBusEdgesByStop(bus->stops.begin(), 
                               bus->stops.begin() + 1, 
                               bus->stops.end(),
                               bus,
-                              bus_velocity,
-                              db);
+                              bus_velocity);
         } else {
             AddBusEdgesByStop(bus->stops.begin(), 
                               bus->stops.begin() + 1, 
                               bus->stops.begin() + (bus->stops.size() + 1) / 2,
                               bus,
-                              bus_velocity,
-                              db);
+                              bus_velocity);
             AddBusEdgesByStop(bus->stops.begin() + bus->stops.size() / 2, 
                               bus->stops.begin() + bus->stops.size() / 2 + 1, 
                               bus->stops.end(),
                               bus,
-                              bus_velocity,
-                              db);
+                              bus_velocity);
         }
     }
 }
 
 void TransportRouter::AddBusEdgesByStop(StopPtrIt internal_from, StopPtrIt to_start, StopPtrIt to_end,
                                         transport::BusPtr bus,
-                                        RouteTime bus_velocity,
-                                        const transport::TransportCatalogue& db) {
+                                        RouteTime bus_velocity) {
     RouteTime edge_weight{};
     auto from_vertex_id = stop_to_vertex_info_.at(*internal_from).stop_vertex_id;
-    int span_count = 0;
+    size_t span_count = 0;
     for (auto from = internal_from, to = to_start; to != to_end; ++from, ++to) {
         if (*to == *internal_from) {
             continue;
         }
-        edge_weight += static_cast<RouteTime>(db.GetStopDistance(*from, *to)) / bus_velocity;
+        edge_weight += static_cast<RouteTime>(db_.GetStopDistance(*from, *to)) / bus_velocity;
         auto edgeId = graph_->AddEdge(graph::Edge<RouteTime>{ 
             from_vertex_id, 
             stop_to_vertex_info_.at(*to).waiting_bus_vertex_id, 
@@ -95,7 +109,6 @@ void TransportRouter::AddBusEdgesByStop(StopPtrIt internal_from, StopPtrIt to_st
                           internal_from + 2, 
                           to_end,
                           bus,
-                          bus_velocity,
-                          db);
+                          bus_velocity);
     }            
 }

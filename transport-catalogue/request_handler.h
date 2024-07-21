@@ -29,22 +29,6 @@ struct StopStat {
     std::set<std::string> bus_names;
 };
 
-struct RouteStat {
-    struct WaitingOnStopItem {
-        std::string_view name;
-    };
-    struct BusItem {
-        std::string_view name;
-        int span_count = 0;
-        double time = 0.0;
-    };
-
-    int bus_wait_time = 0.0;
-    double total_time = 0.0;
-    std::vector<std::variant<WaitingOnStopItem, BusItem>> items;
-};
-using RouteStatItem = std::variant<RouteStat::WaitingOnStopItem, RouteStat::BusItem>;
-
 class RequestHandler {
 public:
     // MapRenderer понадобится в следующей части итогового проекта
@@ -57,7 +41,7 @@ public:
     std::optional<StopStat> GetStopStat(std::string_view stop_name) const;
 
     // Возвращает информацию о прохождении маршрута (запрос Route)
-    std::optional<RouteStat> GetRouteStat(std::string_view stop_name_from, std::string_view stop_name_to) const;
+    std::optional<RouteInfo> FindRoute(std::string_view stop_name_from, std::string_view stop_name_to) const;
 
     // Рендерит транспортный каталог
     svg::Document RenderMap() const;
@@ -68,5 +52,3 @@ private:
     const renderer::MapRenderer& renderer_;
     TransportRouter db_router_;
 };
-
-
